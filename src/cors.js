@@ -2,8 +2,11 @@
 // Por seguridad, el navegador bloquea que una página llame a un servidor de
 // otra dirección, salvo que el servidor diga "esa página sí está permitida".
 // Las direcciones permitidas van en CORS_ORIGENES, separadas por comas.
+const POR_DEFECTO = process.env.NODE_ENV === "production"
+  ? "https://canastas-mia.onrender.com" // el catálogo publicado
+  : "http://localhost:8080";
 const permitidos = new Set(
-  (process.env.CORS_ORIGENES || "http://localhost:8080")
+  (process.env.CORS_ORIGENES || POR_DEFECTO)
     .split(",").map((o) => o.trim()).filter(Boolean)
 );
 
