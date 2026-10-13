@@ -39,23 +39,25 @@ function validarReclamo(r) {
   return errores;
 }
 
-const COLUMNAS = `id, tipo, nombre, tipo_documento, documento, domicilio, telefono, email, apoderado,
-  bien, monto::float AS monto, descripcion_bien, codigo_pedido, detalle, pedido_consumidor, creado_en`;
+// Solo se devuelve el número y la fecha, nunca los datos personales guardados:
+// la página ya tiene lo que el cliente escribió y arma la constancia con eso.
+const respuesta = (h) => ({ numero: numeroHoja(h.id), tipo: h.tipo, creado_en: h.creado_en });
 
-// POST /reclamos: guarda la hoja y devuelve su número y una copia de lo registrado.
+// POST /reclamos: guarda la hoja y devuelve su número.
 rutasReclamos.post("/", async (req, res) => {
   const errores = validarReclamo(req.body);
   if (errores.length) return res.status(400).json({ errores });
   const r = req.body;
 
-  const buscar = async () =>
-    (await db.query(`SELECT ${COLUMNAS} FROM reclamos WHERE clave_envio = $1`, [r.clave_envio])).rows[0];
-  if (r.clave_envio) {
-    const ya = await buscar();
-    if (ya) return res.json({ ...ya, numero: numeroHoja(ya.id) });
-  }
+  // El límite va primero: así nadie puede probar claves sin freno.
   if (!permitirReclamo(claveIp(req.ip))) {
     return res.status(429).json({ errores: ["Demasiados envíos seguidos. Intenta más tarde o escríbenos a canastademia@gmail.com."] });
+  }
+  const buscar = async () =>
+    (await db.query("SELECT id, tipo, creado_en FROM reclamos WHERE clave_envio = $1", [r.clave_envio])).rows[0];
+  if (r.clave_envio) {
+    const ya = await buscar();
+    if (ya) return res.json(respuesta(ya));
   }
 
   const t = (v) => (typeof v === "string" && v.trim() ? v.trim() : null);
@@ -64,17 +66,14 @@ rutasReclamos.post("/", async (req, res) => {
       `INSERT INTO reclamos (clave_envio, tipo, nombre, tipo_documento, documento, domicilio, telefono, email,
          apoderado, bien, monto, descripcion_bien, codigo_pedido, detalle, pedido_consumidor)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-       RETURNING ${COLUMNAS}`,
+       RETURNING id, tipo, creado_en`,
       [r.clave_envio || null, r.tipo, t(r.nombre), r.tipo_documento, t(r.documento), t(r.domicilio),
        t(r.telefono), t(r.email), t(r.apoderado), r.bien, r.monto === "" || r.monto == null ? null : Number(r.monto),
        t(r.descripcion_bien), t(r.codigo_pedido), t(r.detalle), t(r.pedido_consumidor)]
     );
-    res.status(201).json({ ...h, numero: numeroHoja(h.id) });
+    res.status(201).json(respuesta(h));
   } catch (e) {
-    if (e.code === "23505" && e.constraint?.includes("clave_envio")) {
-      const ya = await buscar();
-      return res.json({ ...ya, numero: numeroHoja(ya.id) });
-    }
+    if (e.code === "23505" && e.constraint?.includes("clave_envio")) return res.json(respuesta(await buscar()));
     throw e;
   }
 });
