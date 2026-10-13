@@ -1,5 +1,6 @@
 // Rutas del panel: login y manejo de pedidos. Todo menos /login pide sesión.
 import { Router } from "express";
+import { randomBytes } from "node:crypto";
 import { db } from "../db.js";
 import {
   COOKIE, claveCorrecta, hashearClave, crearSesion, cerrarSesion,
@@ -14,32 +15,43 @@ const ESTADOS = ["nuevo", "pagado", "en_preparacion", "entregado", "cancelado"];
 // después de 5 intentos fallidos, ese usuario queda bloqueado 15 minutos.
 const MAX_INTENTOS = 5;
 const BLOQUEO_MS = 15 * 60 * 1000;
-const intentos = new Map(); // usuario -> { fallos, desde }
+const intentos = new Map(); // usuario -> { cuenta, desde }
 
-function bloqueado(usuario) {
-  const i = intentos.get(usuario);
-  if (i && Date.now() - i.desde > BLOQUEO_MS) intentos.delete(usuario);
-  return (intentos.get(usuario)?.fallos || 0) >= MAX_INTENTOS;
-}
-
-function registrarFallo(usuario) {
-  const i = intentos.get(usuario) || { fallos: 0, desde: Date.now() };
-  i.fallos++;
+// Cuenta el intento ANTES de revisar la contraseña. Si se contara después,
+// alguien podría mandar cientos de intentos al mismo tiempo y todos pasarían
+// el control antes de que se registre el primer fallo.
+// Devuelve false si ese usuario ya gastó sus intentos.
+function usarIntento(usuario) {
+  const ahora = Date.now();
+  if (intentos.size > 10000) {
+    // Limpia registros viejos para que la memoria no crezca sin fin.
+    for (const [u, i] of intentos) if (ahora - i.desde > BLOQUEO_MS) intentos.delete(u);
+  }
+  let i = intentos.get(usuario);
+  if (!i || ahora - i.desde > BLOQUEO_MS) i = { cuenta: 0, desde: ahora };
+  if (i.cuenta >= MAX_INTENTOS) return false;
+  i.cuenta++;
   intentos.set(usuario, i);
+  return true;
 }
+
+// Hash de una contraseña al azar. Se usa cuando el usuario no existe, para que
+// la respuesta tarde lo mismo que con un usuario real: si no, midiendo el
+// tiempo se podría saber qué usuarios existen.
+const HASH_FALSO = await hashearClave(randomBytes(16).toString("hex"));
 
 // POST /admin/login  { usuario, clave }
 rutasAdmin.post("/login", async (req, res) => {
   const usuario = String(req.body?.usuario || "").trim().toLowerCase();
   const clave = String(req.body?.clave || "");
-  if (bloqueado(usuario)) {
+  if (!usarIntento(usuario)) {
     return res.status(429).json({ error: "Demasiados intentos. Espera 15 minutos." });
   }
   const { rows } = await db.query("SELECT id, nombre, hash_clave FROM usuarios WHERE usuario = $1", [usuario]);
-  // Mismo mensaje si el usuario no existe o la clave está mal: así no se puede
-  // averiguar qué usuarios existen.
-  if (!rows.length || !(await claveCorrecta(clave, rows[0].hash_clave))) {
-    registrarFallo(usuario);
+  // Siempre se calcula un hash y siempre se da el mismo mensaje,
+  // exista o no el usuario.
+  const correcta = await claveCorrecta(clave, rows[0]?.hash_clave ?? HASH_FALSO);
+  if (!rows.length || !correcta) {
     return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
   }
   intentos.delete(usuario);
