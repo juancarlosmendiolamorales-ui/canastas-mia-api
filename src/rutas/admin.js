@@ -11,16 +11,19 @@ export const rutasAdmin = Router();
 
 const ESTADOS = ["nuevo", "pagado", "en_preparacion", "entregado", "cancelado"];
 
-// Freno contra quien prueba contraseñas una y otra vez. Se cuenta por
-// aparato (dirección IP), no solo por usuario: si fuera solo por usuario,
-// un extraño podría fallar 5 veces a propósito y dejar a Mia sin poder entrar.
-//  - 5 intentos por usuario desde la misma IP cada 15 minutos.
-//  - 20 intentos en total desde la misma IP (aunque cambie de usuario).
+// Freno contra quien prueba contraseñas una y otra vez. Tres límites cada 15 minutos:
+//  - 5 intentos por usuario desde la misma IP.
+//  - 20 intentos desde la misma IP, aunque cambie de usuario.
+//  - 100 intentos contra la misma cuenta, sumando todas las IP. Frena a quien
+//    usa muchas IP a la vez. Es alto a propósito: si fuera bajo, un extraño
+//    podría bloquear la cuenta de Mia fallando unas pocas veces.
+// El bloqueo solo impide iniciar sesión de nuevo: quien ya entró sigue adentro.
 const VENTANA_MS = 15 * 60 * 1000;
 const LIMITE_USUARIO_IP = 5;
 const LIMITE_IP = 20;
+const LIMITE_CUENTA = 100;
 const MAX_REGISTROS = 10000; // tope para que la memoria no crezca sin fin
-const intentos = new Map(); // clave -> { cuenta, desde }  (en orden de llegada)
+const intentos = new Map(); // clave -> { cuenta, limite, desde }  (en orden de llegada)
 let ultimaLimpieza = 0;
 
 // Una red IPv6 tiene millones de direcciones (todo un /64 suele ser de una
@@ -37,25 +40,32 @@ function claveIp(ip = "") {
   return completa.slice(0, 4).join(":") + "::/64";
 }
 
+const bloqueada = (i) => i.cuenta >= i.limite;
+
 // Borra registros vencidos (como mucho una vez por minuto) y, si aun así hay
-// demasiados, los más antiguos.
+// demasiados, los más antiguos que NO estén bloqueados. Nunca se borra un
+// bloqueo vigente: si no, un atacante podría inundar la lista para que se
+// borre el suyo.
 function limpiar(ahora) {
   if (intentos.size < MAX_REGISTROS && ahora - ultimaLimpieza < 60_000) return;
   ultimaLimpieza = ahora;
   for (const [k, i] of intentos) if (ahora - i.desde > VENTANA_MS) intentos.delete(k);
-  for (const k of intentos.keys()) {
+  for (const [k, i] of intentos) {
     if (intentos.size < MAX_REGISTROS) break;
-    intentos.delete(k);
+    if (!bloqueada(i)) intentos.delete(k);
   }
 }
 
 function sumar(clave, limite, ahora) {
   let i = intentos.get(clave);
   if (!i || ahora - i.desde > VENTANA_MS) {
+    // Si la lista está llena solo de bloqueos, no se aceptan claves nuevas
+    // hasta que venzan: es mejor frenar logins un rato que perder bloqueos.
+    if (intentos.size >= MAX_REGISTROS && !i) return false;
     intentos.delete(clave); // así queda al final, como el más nuevo
-    i = { cuenta: 0, desde: ahora };
+    i = { cuenta: 0, limite, desde: ahora };
   }
-  if (i.cuenta >= limite) return false;
+  if (bloqueada(i)) return false;
   i.cuenta++;
   intentos.set(clave, i);
   return true;
@@ -68,7 +78,9 @@ function sumar(clave, limite, ahora) {
 function usarIntento(ip, usuario) {
   const ahora = Date.now();
   limpiar(ahora);
-  return sumar(`ip:${ip}`, LIMITE_IP, ahora) && sumar(`${ip}|${usuario}`, LIMITE_USUARIO_IP, ahora);
+  return sumar(`ip:${ip}`, LIMITE_IP, ahora)
+    && sumar(`${ip}|${usuario}`, LIMITE_USUARIO_IP, ahora)
+    && sumar(`cuenta:${usuario}`, LIMITE_CUENTA, ahora);
 }
 
 // Hash de una contraseña al azar. Se usa cuando el usuario no existe, para que
