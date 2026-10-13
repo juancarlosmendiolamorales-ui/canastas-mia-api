@@ -85,6 +85,10 @@ POST /pedidos
   15 días hábiles visible en el panel y constancia para el cliente.
 - **Retención de datos:** los pedidos se borran solos a los 2 años, como dice la política de
   privacidad; los reclamos se conservan.
+- **Una sola fuente para las canastas:** Mia edita nombres, productos, precios y qué se muestra en
+  una Google Sheet. El catálogo la lee al abrirse y el servidor la copia a la base al arrancar y cada
+  5 minutos (solo escribe si la hoja cambió). Si Google falla o la hoja llega vacía, se quedan los
+  datos que ya había.
 - **Tolerante a cortes de la base:** si Neon cierra una conexión inactiva, el servidor no se cae.
 
 ## Tecnologías
@@ -111,7 +115,7 @@ npm run dev                   # http://localhost:3000  ·  panel en /panel
 npm test
 ```
 
-30 pruebas con el *test runner* que ya trae Node (sin librerías extra). Las de la API corren contra
+36 pruebas con el *test runner* que ya trae Node (sin librerías extra). Las de la API corren contra
 una base aparte, `canastas_pruebas`, que se crea y se vacía sola; se niegan a correr si la base no es
 local. Revisan, entre otras cosas, que:
 
@@ -119,7 +123,8 @@ local. Revisan, entre otras cosas, que:
 - tocar "Enviar" varias veces, o dos veces al mismo tiempo, guarde un solo pedido;
 - un texto con SQL se guarde como texto y no se ejecute;
 - el login dé el mismo mensaje exista o no el usuario, frene a los 5 intentos y use cookies `HttpOnly`;
-- el Libro de Reclamaciones nunca devuelva datos personales.
+- el Libro de Reclamaciones nunca devuelva datos personales;
+- un precio nuevo en la Google Sheet llegue al total del pedido, y una hoja rota no borre nada.
 
 ## Estructura
 
@@ -132,6 +137,7 @@ src/
   ip.js · limite.js  IP del visitante y límites anti-spam
   auth.js            contraseñas, sesiones y cookies
   preparar.js        crea tablas y carga canastas (sin borrar nada)
+  hoja.js            copia las canastas de la Google Sheet a la base
   rutas/             canastas, pedidos, reclamos y admin
 test/                pruebas automáticas (npm test)
 public/panel/        panel web

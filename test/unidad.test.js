@@ -7,6 +7,7 @@ import { validarReclamo, numeroHoja } from "../src/rutas/reclamos.js";
 import { claveIp } from "../src/ip.js";
 import { crearLimite } from "../src/limite.js";
 import { hashearClave, claveCorrecta } from "../src/auth.js";
+import { leerCSV, leerPrecio, leerHoja } from "../src/hoja.js";
 
 const pedidoBueno = () => ({
   nombre: "Ana", apellido: "Pérez", celular: "987654321", metodo_pago: "yape",
@@ -91,4 +92,28 @@ test("la contraseña se guarda como hash con sal, nunca tal cual", async () => {
   assert.notEqual(a, b, "misma contraseña, distinto hash gracias a la sal");
   assert.equal(await claveCorrecta("navidad2026", a), true);
   assert.equal(await claveCorrecta("navidad2027", a), false);
+});
+
+test("CSV: las comas entre comillas no separan columnas", () => {
+  assert.deepEqual(leerCSV('"a","1 Panetón, 1 Leche","dice ""hola"""\r\n"b","",""'), [
+    ["a", "1 Panetón, 1 Leche", 'dice "hola"'],
+    ["b", "", ""],
+  ]);
+});
+
+test("precio: acepta cómo lo escribiría Mia", () => {
+  assert.equal(leerPrecio("120"), 120);
+  assert.equal(leerPrecio("S/ 85.50"), 85.5);
+  assert.equal(leerPrecio("85,50"), 85.5);
+  assert.equal(leerPrecio("1,250.00"), 1250);
+  for (const v of ["", "0", "por confirmar", null]) assert.equal(leerPrecio(v), null, String(v));
+});
+
+test("hoja: salta la fila de títulos, IDs raros y repetidos", () => {
+  const csv = '"ID","Nombre","Productos","Precio","Mostrar"\n' +
+    '"c1","Uno","a, b","10","si"\n"x9","Mala","","",""\n"c1","Repetida","","",""\n"c2","Dos","","","No"';
+  assert.deepEqual(leerHoja(csv), [
+    { id: "c1", nombre: "Uno", productos: ["a", "b"], precio: 10, visible: true },
+    { id: "c2", nombre: "Dos", productos: [], precio: null, visible: false },
+  ]);
 });

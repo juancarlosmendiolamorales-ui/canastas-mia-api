@@ -44,6 +44,7 @@ before(async () => {
 
   // 2. La app lee DATABASE_URL al importarse: se cambia ANTES de importarla.
   process.env.DATABASE_URL = prueba.href;
+  process.env.HOJA_ID = ""; // sin internet: la hoja de Google se prueba aparte
   delete process.env.CORS_ORIGENES;
   const { prepararBase } = await import("../src/preparar.js");
   const { hashearClave } = await import("../src/auth.js");
@@ -244,4 +245,42 @@ test("reclamo: devuelve el número de hoja y nunca los datos personales", async 
   const otraVez = await pedir("/reclamos", { metodo: "POST", cuerpo: hoja });
   assert.equal(otraVez.json.numero, r.json.numero, "reenviar no crea otra hoja");
   assert.equal(otraVez.json.documento, undefined, "ni filtra el DNI");
+});
+
+// ---------- Sincronización con la Google Sheet ----------
+// Van al final porque cambian las canastas que usan las pruebas de arriba.
+
+const CABECERA = '"ID (no cambiar)","Nombre","Productos (separados por coma)","Precio S/ (vacío = por confirmar)","Mostrar (SI/NO)"\n';
+
+test("hoja: un precio nuevo en la hoja llega al total del pedido", async () => {
+  const { aplicarCanastas, leerHoja } = await import("../src/hoja.js");
+  const csv = CABECERA +
+    '"c1","Dulce Navidad","1 Panetón, 1 Leche","S/ 85.50","SI"\n' +
+    '"c2","Espíritu Navideño","1 Panetón","","SI"\n';
+  await aplicarCanastas(leerHoja(csv));
+  const r = await pedir("/pedidos", { metodo: "POST", cuerpo: pedido() });
+  assert.equal(r.status, 201);
+  assert.equal(r.json.total, 171, "2 x S/ 85.50");
+  const c1 = (await pedir("/canastas/c1")).json;
+  assert.deepEqual(c1.productos, ["1 Panetón", "1 Leche"]);
+});
+
+test("hoja: Mostrar NO o fila borrada ocultan la canasta; una fila nueva no inventa canastas", async () => {
+  const { aplicarCanastas, leerHoja } = await import("../src/hoja.js");
+  const csv = CABECERA +
+    '"c1","Dulce Navidad","1 Panetón","","NO"\n' +
+    '"c2","Espíritu Navideño","1 Panetón","","SI"\n' +
+    '"c99","Canasta sin foto","1 Panetón","50","SI"\n';
+  await aplicarCanastas(leerHoja(csv));
+  const ids = (await pedir("/canastas")).json.map((c) => c.id);
+  assert.deepEqual(ids, ["c2"], "c1 dice NO, c3..c16 no están en la hoja, c99 no existe en el catálogo");
+});
+
+test("hoja: si llega vacía o rota, no se toca nada", async () => {
+  const { aplicarCanastas, leerHoja } = await import("../src/hoja.js");
+  const antes = (await pedir("/canastas")).json;
+  for (const csv of ["", "<html>error de Google</html>", CABECERA]) {
+    await aplicarCanastas(leerHoja(csv));
+  }
+  assert.deepEqual((await pedir("/canastas")).json, antes);
 });

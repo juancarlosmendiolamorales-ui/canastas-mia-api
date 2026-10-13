@@ -2,6 +2,7 @@
 // Recibe pedidos del navegador y responde con datos en formato JSON.
 import { app } from "./app.js";
 import { prepararBase } from "./preparar.js";
+import { sincronizarCanastas } from "./hoja.js";
 import { db } from "./db.js";
 
 const PUERTO = process.env.PORT || 3000;
@@ -21,6 +22,11 @@ async function borrarPedidosViejos() {
 }
 await borrarPedidosViejos();
 setInterval(borrarPedidosViejos, 24 * 60 * 60 * 1000).unref();
+
+// Las canastas (nombre, productos, precio, si se muestran) las maneja Mia desde
+// la Google Sheet. Se copian a la base al arrancar y luego cada 5 minutos.
+await sincronizarCanastas();
+setInterval(sincronizarCanastas, 5 * 60 * 1000).unref();
 
 app.listen(PUERTO, () => {
   console.log(`Servidor en http://localhost:${PUERTO}`);

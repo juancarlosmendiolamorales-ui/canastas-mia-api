@@ -4,6 +4,7 @@ import { randomInt } from "node:crypto";
 import { db } from "../db.js";
 import { claveIp } from "../ip.js";
 import { crearLimite } from "../limite.js";
+import { sincronizarSiPasoUnRato } from "../hoja.js";
 
 export const rutasPedidos = Router();
 
@@ -81,11 +82,16 @@ rutasPedidos.post("/", async (req, res) => {
   // Precio y nombre salen de la base de datos, nunca del cliente,
   // para que nadie pueda mandar un precio inventado.
   const ids = [...new Set(p.items.map((i) => i.canasta_id))];
-  const { rows: canastas } = await db.query(
-    "SELECT id, nombre, precio FROM canastas WHERE visible AND id = ANY($1)",
-    [ids]
-  );
-  const porId = Object.fromEntries(canastas.map((c) => [c.id, c]));
+  const buscarCanastas = async () => {
+    const { rows } = await db.query(
+      "SELECT id, nombre, precio FROM canastas WHERE visible AND id = ANY($1)",
+      [ids]
+    );
+    return Object.fromEntries(rows.map((c) => [c.id, c]));
+  };
+  let porId = await buscarCanastas();
+  // Si falta alguna, quizá Mia la volvió a mostrar en la hoja hace un momento.
+  if (ids.some((id) => !porId[id]) && (await sincronizarSiPasoUnRato())) porId = await buscarCanastas();
   const noExisten = ids.filter((id) => !porId[id]);
   if (noExisten.length) {
     return res.status(400).json({ errores: [`No existen las canastas: ${noExisten.join(", ")}`] });
