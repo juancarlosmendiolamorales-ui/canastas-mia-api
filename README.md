@@ -58,8 +58,11 @@ POST /pedidos
 - **Consultas parametrizadas** (`$1, $2…`) contra inyección SQL.
 - **Contraseñas con scrypt** (hash con sal); nunca se guardan en texto.
 - **Sesiones en cookies `HttpOnly` y `SameSite=Strict`**; en la base solo se guarda el hash del token.
-- **Bloqueo de 15 minutos** tras 5 intentos de login fallidos, y el mismo mensaje de error si el
-  usuario no existe o la clave está mal.
+- **Límite de intentos de login** por aparato (IP): 5 por usuario y 20 en total cada 15 minutos.
+  Se cuenta antes de revisar la clave (así no se salta con intentos en paralelo) y por IP
+  (así nadie puede bloquear la cuenta de otra persona a propósito).
+- **Mismo mensaje y mismo tiempo de respuesta** si el usuario no existe o la clave está mal,
+  para no revelar qué usuarios existen.
 - **El panel nunca inserta HTML** con datos del cliente (usa `textContent`), para evitar XSS.
 
 ## Tecnologías

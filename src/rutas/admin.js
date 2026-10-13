@@ -11,28 +11,64 @@ export const rutasAdmin = Router();
 
 const ESTADOS = ["nuevo", "pagado", "en_preparacion", "entregado", "cancelado"];
 
-// Freno contra quien prueba contraseñas una y otra vez:
-// después de 5 intentos fallidos, ese usuario queda bloqueado 15 minutos.
-const MAX_INTENTOS = 5;
-const BLOQUEO_MS = 15 * 60 * 1000;
-const intentos = new Map(); // usuario -> { cuenta, desde }
+// Freno contra quien prueba contraseñas una y otra vez. Se cuenta por
+// aparato (dirección IP), no solo por usuario: si fuera solo por usuario,
+// un extraño podría fallar 5 veces a propósito y dejar a Mia sin poder entrar.
+//  - 5 intentos por usuario desde la misma IP cada 15 minutos.
+//  - 20 intentos en total desde la misma IP (aunque cambie de usuario).
+const VENTANA_MS = 15 * 60 * 1000;
+const LIMITE_USUARIO_IP = 5;
+const LIMITE_IP = 20;
+const MAX_REGISTROS = 10000; // tope para que la memoria no crezca sin fin
+const intentos = new Map(); // clave -> { cuenta, desde }  (en orden de llegada)
+let ultimaLimpieza = 0;
+
+// Una red IPv6 tiene millones de direcciones (todo un /64 suele ser de una
+// sola casa), así que se cuenta por red y no por dirección.
+function claveIp(ip = "") {
+  if (ip.startsWith("::ffff:")) return ip.slice(7); // IPv4 escrita como IPv6
+  if (!ip.includes(":")) return ip;
+  const partes = ip.split("::");
+  const izq = partes[0] ? partes[0].split(":") : [];
+  const der = partes[1] ? partes[1].split(":") : [];
+  const completa = partes.length === 2
+    ? [...izq, ...Array(8 - izq.length - der.length).fill("0"), ...der]
+    : izq;
+  return completa.slice(0, 4).join(":") + "::/64";
+}
+
+// Borra registros vencidos (como mucho una vez por minuto) y, si aun así hay
+// demasiados, los más antiguos.
+function limpiar(ahora) {
+  if (intentos.size < MAX_REGISTROS && ahora - ultimaLimpieza < 60_000) return;
+  ultimaLimpieza = ahora;
+  for (const [k, i] of intentos) if (ahora - i.desde > VENTANA_MS) intentos.delete(k);
+  for (const k of intentos.keys()) {
+    if (intentos.size < MAX_REGISTROS) break;
+    intentos.delete(k);
+  }
+}
+
+function sumar(clave, limite, ahora) {
+  let i = intentos.get(clave);
+  if (!i || ahora - i.desde > VENTANA_MS) {
+    intentos.delete(clave); // así queda al final, como el más nuevo
+    i = { cuenta: 0, desde: ahora };
+  }
+  if (i.cuenta >= limite) return false;
+  i.cuenta++;
+  intentos.set(clave, i);
+  return true;
+}
 
 // Cuenta el intento ANTES de revisar la contraseña. Si se contara después,
 // alguien podría mandar cientos de intentos al mismo tiempo y todos pasarían
 // el control antes de que se registre el primer fallo.
-// Devuelve false si ese usuario ya gastó sus intentos.
-function usarIntento(usuario) {
+// Devuelve false si ya no le quedan intentos.
+function usarIntento(ip, usuario) {
   const ahora = Date.now();
-  if (intentos.size > 10000) {
-    // Limpia registros viejos para que la memoria no crezca sin fin.
-    for (const [u, i] of intentos) if (ahora - i.desde > BLOQUEO_MS) intentos.delete(u);
-  }
-  let i = intentos.get(usuario);
-  if (!i || ahora - i.desde > BLOQUEO_MS) i = { cuenta: 0, desde: ahora };
-  if (i.cuenta >= MAX_INTENTOS) return false;
-  i.cuenta++;
-  intentos.set(usuario, i);
-  return true;
+  limpiar(ahora);
+  return sumar(`ip:${ip}`, LIMITE_IP, ahora) && sumar(`${ip}|${usuario}`, LIMITE_USUARIO_IP, ahora);
 }
 
 // Hash de una contraseña al azar. Se usa cuando el usuario no existe, para que
@@ -42,9 +78,10 @@ const HASH_FALSO = await hashearClave(randomBytes(16).toString("hex"));
 
 // POST /admin/login  { usuario, clave }
 rutasAdmin.post("/login", async (req, res) => {
-  const usuario = String(req.body?.usuario || "").trim().toLowerCase();
+  const usuario = String(req.body?.usuario || "").trim().toLowerCase().slice(0, 100);
   const clave = String(req.body?.clave || "");
-  if (!usarIntento(usuario)) {
+  const ip = claveIp(req.ip);
+  if (!usarIntento(ip, usuario)) {
     return res.status(429).json({ error: "Demasiados intentos. Espera 15 minutos." });
   }
   const { rows } = await db.query("SELECT id, nombre, hash_clave FROM usuarios WHERE usuario = $1", [usuario]);
@@ -54,7 +91,7 @@ rutasAdmin.post("/login", async (req, res) => {
   if (!rows.length || !correcta) {
     return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
   }
-  intentos.delete(usuario);
+  intentos.delete(`${ip}|${usuario}`);
   const token = await crearSesion(rows[0].id);
   res.cookie(COOKIE, token, opcionesCookie());
   res.json({ nombre: rows[0].nombre });

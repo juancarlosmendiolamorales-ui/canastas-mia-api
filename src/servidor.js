@@ -9,6 +9,10 @@ import { prepararBase } from "./preparar.js";
 const app = express();
 const PUERTO = process.env.PORT || 3000;
 
+// En Render, el servidor está detrás de un "proxy" que reenvía las visitas.
+// Esto hace que req.ip sea la IP real del visitante y no la del proxy.
+if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
+
 // Permite leer el JSON que manda el cliente en un POST (máximo 20 KB).
 app.use(express.json({ limit: "20kb" }));
 
