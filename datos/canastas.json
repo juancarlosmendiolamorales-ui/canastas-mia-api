@@ -1,0 +1,327 @@
+[
+  {
+    "id": "c1",
+    "nombre": "Dulce Navidad",
+    "productos": [
+      "1 Panetón Milano bolsa Sayón",
+      "1 Azúcar Dulfina 1 kg",
+      "1 Mermelada sachet A1",
+      "1 Ideal Amanecer 390 g",
+      "1 Herbi chico",
+      "1 Chocolate Oro del Cusco"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c2",
+    "nombre": "Espíritu Navideño",
+    "productos": [
+      "1 Panetón Milano bolsa Sayón",
+      "1 Azúcar 250 g",
+      "1 Leche Amanecer 390 g",
+      "1 Chocolate Estrella del Cusco",
+      "1 Soda GN familiar / vainilla"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c3",
+    "nombre": "Magia de Navidad",
+    "productos": [
+      "1 Panetón Sayón bolsa",
+      "1 Azúcar Pomalca 1 kg",
+      "1 Arroz Costeño",
+      "1 Leche Gloria UHT 390 g",
+      "1 Chocolate taza Sol del Cusco",
+      "1 Inka Chips 135 g / surtido",
+      "1 Frugos del Valle 1 lt",
+      "1 Atún Florida",
+      "1 Fideo sopa Anita",
+      "1 Menestra 250 g",
+      "1 Galleta navideña",
+      "1 Aceite Beltrán 5000 ml",
+      "1 Caja organizadora #35"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c4",
+    "nombre": "Abrazo Navideño",
+    "productos": [
+      "1 Panetón Sayón bolsa",
+      "1 Pulp durazno chico",
+      "1 Leche Gloria",
+      "1 Chocolate taza Estrella del Cusco",
+      "1 Azúcar Dulfina 1 kg",
+      "1 Menestra",
+      "1 Gelatina Umsha",
+      "1 Arroz Costeño 750 g",
+      "1 Nik Costa",
+      "1 Pepsi jumbo",
+      "1 Herbi chico",
+      "1 Fideo sopa Anita",
+      "1 Caja navideña Hoho"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c5",
+    "nombre": "Tina Noel",
+    "productos": [
+      "1 Panetón Blanca Flor",
+      "1 Arroz 750 g",
+      "1 Azúcar",
+      "2 Leches Gloria",
+      "1 Chocolate Oro",
+      "1 Pepsi 1 lt",
+      "1 Aceite Primor",
+      "1 Mermelada sachet",
+      "1 Fideos Molitalia",
+      "1 Árbol navideño",
+      "1 Menestra",
+      "1 Wafer Costa",
+      "1 Durazno Pulp"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c6",
+    "nombre": "Bolsa Regalo",
+    "productos": [
+      "1 Maletín deportivo",
+      "1 Panetón Todinno en caja + Todinito",
+      "1 Pomarola 160 g",
+      "1 Choco Donuts caja de regalo",
+      "2 Don Vittorio tornillo 500 g",
+      "2 Llumpe 500 g",
+      "2 Tablas de chocolate Sol del Cusco",
+      "1 Chifles carretilleros Inka 135 g",
+      "2 Latas de leche Gloria 390 g",
+      "2 Bolsas de azúcar rubia Dulfina 1 kg",
+      "2 Arroz Costeño 750 g",
+      "1 Aceite Primor 500 ml",
+      "1 Coca-Cola 1 L",
+      "1 Lata de duraznos Arica",
+      "1 Mermelada Fanny"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c7",
+    "nombre": "Alegría del Hogar",
+    "productos": [
+      "1 Bolsa de rafia",
+      "1 Panetón Sayón en bolsa",
+      "1 Leche Amanecer lata",
+      "1 Chocolate taza Estrella del Cusco",
+      "1 Infusión chico",
+      "1 Cabello de ángel Anita",
+      "1 Aceite Beltrán 500 lt",
+      "1 Atún Tovar",
+      "1 Fideo sopa Anita",
+      "1 Sachet de mermelada",
+      "1 Cereal Ángel",
+      "1 Menestra",
+      "1 Avena Oso 110 g",
+      "1 Toalla Paracas",
+      "1 Durazno Kankay",
+      "1 Azúcar Pomalca",
+      "1 Arroz Costeño 750 g",
+      "1 Duetto San Jorge"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c8",
+    "nombre": "Maleta de Santa",
+    "productos": [
+      "1 Maleta 10 kg (varía de color)",
+      "1 Panetón bolsa Donofrio",
+      "1 Leche Gloria caja",
+      "1 Leche Gloria chocolate caja",
+      "1 Chocolate taza Sol del Cusco",
+      "2 Azúcar Pomalca",
+      "2 Arroz Costeño",
+      "2 Menestra",
+      "1 Durazno Arica",
+      "2 Spaghetti Don Vittorio",
+      "1 Atún Florida",
+      "1 Nescafé pote 200 g",
+      "1 Gelatina Umsha",
+      "1 Mermelada Fanny pote",
+      "1 Pringles chico",
+      "1 Casino",
+      "1 Inka Chips 135 g",
+      "1 Cream Cracker familiar",
+      "1 Vizzio chico 63 g",
+      "1 Mini Ricardona 200 ml",
+      "1 Frugos 1 lt"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c9",
+    "nombre": "Estrella de Belén",
+    "productos": [
+      "1 Panetón Blanca Flor bolsa",
+      "1 Arroz Costeño 750 g",
+      "1 Infusión chico",
+      "1 Azúcar Dulfina 250 g",
+      "1 Leche Ideal Cremosita",
+      "1 Chocolate Oro del Cusco",
+      "1 Frugos del Valle 970 ml",
+      "1 Fideo sopa Don Vittorio",
+      "1 Soda familiar / vainilla",
+      "1 Avena 110 g"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c10",
+    "nombre": "Noche de Paz",
+    "productos": [
+      "1 Panetón Todinno + Todinito",
+      "1 Soda Gourmet",
+      "1 Leche Gloria",
+      "1 Pepsi",
+      "1 Atún Florida",
+      "1 Pulp durazno chico",
+      "1 Chocolate Cusco",
+      "1 Menestra",
+      "1 Pomarola",
+      "1 Azúcar",
+      "1 Arroz Costeño",
+      "1 Mermelada sachet",
+      "1 Galleta navideña"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c11",
+    "nombre": "Ilusión Navideña",
+    "productos": [
+      "1 Panetón Milano bolsa Sayón",
+      "1 Avena 3 Ositos",
+      "1 Cereal Ángel Chock mini",
+      "1 Herbi chico",
+      "1 Chocolate taza Estrella del Cusco",
+      "1 Leche Ideal Amanecer",
+      "1 Tina"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c12",
+    "nombre": "Sonrisa de Navidad",
+    "productos": [
+      "1 Panetón Milano bolsa Sayón",
+      "1 Fideo sopa Anita",
+      "1 Leche Ideal Amanecer",
+      "1 Chocolate taza Estrella del Cusco",
+      "1 Animalitos San Jorge 60 g",
+      "1 Azúcar Dulfina 250 g",
+      "1 Mermelada sachet A1",
+      "1 Tina"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c13",
+    "nombre": "Luces de Navidad",
+    "productos": [
+      "1 Caja organizadora #25",
+      "1 Panetón Sayón bolsa",
+      "1 Chocolate taza Sol del Cusco",
+      "1 Azúcar Dulfina 1 kg",
+      "1 Fideo sopa Anita",
+      "1 Avena 110 g",
+      "1 Pepsi jumbo",
+      "1 Aceite 450 ml",
+      "1 Pulp durazno",
+      "1 Papel toalla Paracas",
+      "1 Menestra",
+      "1 Arroz Costeño 750 g",
+      "1 Herbi chico",
+      "1 Choco Donuts caja de regalo",
+      "1 Leche Gloria",
+      "1 Inka Chips 30 g"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c14",
+    "nombre": "Brindis de Navidad",
+    "productos": [
+      "1 Cesto de bambú con tapa",
+      "1 Panetón D'Onofrio en caja",
+      "1 Espumante Riccadonna Ruby",
+      "1 Chifles carretilleros Inka 130 g",
+      "1 Arroz Costeño 750 g",
+      "1 Azúcar rubia Dulfina 1 kg",
+      "2 Spaghetti Don Vittorio",
+      "1 Leche Gloria entera caja",
+      "1 Galletas Navideñas San Jorge",
+      "1 Choco Donuts Costa",
+      "1 Soda Gourmet San Jorge",
+      "2 Chocolate taza Sol del Cusco",
+      "1 Menestra",
+      "2 Atún Florida",
+      "1 Nestlé Topping",
+      "1 Nescafé Tradición",
+      "2 Aceite Primor",
+      "1 Milo lata",
+      "1 Duraznos Dos Caballos",
+      "1 Mermelada Queen"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c15",
+    "nombre": "Tesoro Navideño",
+    "productos": [
+      "1 Caja organizadora con tapa",
+      "1 Panetón Todinno en caja + Todinnito",
+      "1 Panetón D'Onofrio en caja",
+      "1 Herbi Té Puro",
+      "1 Mermelada sachet A1",
+      "2 Leche Gloria",
+      "2 Canuto rayado Anita",
+      "1 Atún Tovar",
+      "1 Galletas Nubbe San Jorge",
+      "1 Inca Kola",
+      "2 Chocolate taza Sol del Cusco",
+      "2 Menestra",
+      "1 Choco Donuts caja de regalo",
+      "1 Aceite Beltrán",
+      "1 Papel toalla Paracas",
+      "2 Arroz Costeño 750 g",
+      "2 Azúcar rubia Dulfina 1 kg"
+    ],
+    "precio": null
+  },
+  {
+    "id": "c16",
+    "nombre": "Abundancia Navideña",
+    "productos": [
+      "1 Cesto con tapa",
+      "1 Panetón D'Onofrio en caja",
+      "1 Pepsi jumbo",
+      "1 Galletas Black Out San Jorge",
+      "1 Mermelada sachet A1",
+      "2 Avena 3 Ositos",
+      "2 Menestra",
+      "1 Cereal 7 Semillas La Nuestra",
+      "1 Spaghetti Anita",
+      "2 Canuto rayado Anita",
+      "1 Herbi Canela y Clavo",
+      "1 Papel toalla Paracas",
+      "2 Azúcar rubia Dulfina 1 kg",
+      "1 Duraznos Kankay",
+      "1 Aceite Beltrán",
+      "2 Arroz Costeño 750 g",
+      "3 Chocolate taza Estrella del Cusco",
+      "3 Leche Ideal Amanecer"
+    ],
+    "precio": null
+  }
+]

@@ -1,0 +1,16 @@
+# Base de datos PostgreSQL en un contenedor de Docker.
+# Encender: npm run db:encender   Apagar: npm run db:apagar
+services:
+  db:
+    image: postgres:17.6
+    environment:
+      POSTGRES_USER: mia
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: canastas
+    ports:
+      - "5432:5432"
+    volumes:
+      - datos-db:/var/lib/postgresql/data
+
+volumes:
+  datos-db:

@@ -1,0 +1,29 @@
+{
+  "name": "canastas-mia-api",
+  "version": "0.1.0",
+  "description": "Backend del catálogo Canastas MIA: canastas y pedidos",
+  "type": "module",
+  "main": "src/servidor.js",
+  "scripts": {
+    "dev": "node --env-file=.env --watch src/servidor.js",
+    "start": "node src/servidor.js",
+    "db:encender": "docker compose --env-file .env up -d",
+    "db:apagar": "docker compose --env-file .env stop",
+    "usuario": "node --env-file=.env scripts/crear-usuario.js",
+    "db:reiniciar": "node --env-file=.env scripts/semilla.js",
+    "usuario:produccion": "node --env-file=.env.produccion scripts/crear-usuario.js"
+  },
+  "author": "Juan Carlos Mendiola",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/juancarlosmendiolamorales-ui/canastas-mia-api"
+  }
+}

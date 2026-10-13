@@ -1,0 +1,15 @@
+# Configuración para Render (https://render.com). Plan gratis.
+services:
+  - type: web
+    name: canastas-mia-api
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # se pega a mano en Render: es secreta

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Canastas MIA</title>
+<style>
+  :root {
+    --vino: #7a1219; --vino-osc: #5c0d13; --crema: #f6ecdc; --oro: #b8862d;
+    --texto: #2a1a17; --suave: #6b5a55; --borde: #e3d5c0; --blanco: #fff;
+    --nuevo: #2563eb; --pagado: #0f766e; --en_preparacion: #b45309; --entregado: #15803d; --cancelado: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--crema); color: var(--texto); }
+  button, select, input { font: inherit; }
+  h1, h2 { font-family: Georgia, "Times New Roman", serif; margin: 0; }
+  [hidden] { display: none !important; }
+
+  /* Login */
+  .login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+  .login form { background: var(--blanco); border: 1px solid var(--borde); border-radius: 14px; padding: 28px 22px; width: 100%; max-width: 360px; }
+  .login h1 { color: var(--vino); font-size: 28px; text-align: center; }
+  .login p.sub { text-align: center; color: var(--suave); margin: 4px 0 20px; }
+  label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 14px; }
+  label input { display: block; width: 100%; margin-top: 6px; padding: 11px 12px; border: 1px solid var(--borde); border-radius: 8px; background: var(--blanco); }
+  .btn { border: 0; border-radius: 8px; padding: 11px 16px; font-weight: 600; cursor: pointer; }
+  .btn-principal { background: var(--vino); color: var(--blanco); width: 100%; }
+  .btn-principal:hover { background: var(--vino-osc); }
+  .btn-claro { background: transparent; color: var(--blanco); border: 1px solid rgba(255,255,255,.5); padding: 7px 12px; }
+  .error { color: #b91c1c; font-size: 14px; min-height: 20px; margin: 0 0 10px; }
+
+  /* Panel */
+  header { background: var(--vino); color: var(--blanco); padding: 14px 16px; position: sticky; top: 0; z-index: 2; }
+  .barra { max-width: 960px; margin: 0 auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .barra h1 { font-size: 22px; flex: 1; min-width: 160px; }
+  .barra .hola { font-size: 14px; opacity: .9; width: 100%; order: 3; }
+  main { max-width: 960px; margin: 0 auto; padding: 16px; }
+  .filtros { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 14px; }
+  .filtros button { flex: none; background: var(--blanco); border: 1px solid var(--borde); border-radius: 999px; padding: 7px 14px; cursor: pointer; color: var(--texto); }
+  .filtros button[aria-pressed="true"] { background: var(--vino); border-color: var(--vino); color: var(--blanco); }
+  .filtros .n { opacity: .7; margin-left: 4px; }
+  .acciones { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; color: var(--suave); font-size: 14px; }
+  .acciones button { background: none; border: 0; color: var(--vino); font-weight: 600; cursor: pointer; padding: 6px 0; }
+  .lista { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); }
+  .pedido { background: var(--blanco); border: 1px solid var(--borde); border-left: 5px solid var(--color, var(--borde)); border-radius: 10px; padding: 14px 16px; }
+  .pedido .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .codigo { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
+  .fecha { color: var(--suave); font-size: 13px; }
+  .cliente { font-weight: 600; margin: 8px 0 2px; }
+  .contacto { font-size: 14px; color: var(--suave); }
+  .contacto a { color: #15803d; font-weight: 600; text-decoration: none; }
+  .pedido ul { margin: 10px 0; padding-left: 18px; }
+  .nota { background: var(--crema); border-radius: 6px; padding: 6px 10px; font-size: 14px; margin: 8px 0; }
+  .pie { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .total { font-weight: 700; color: var(--vino); }
+  .total.sin { font-weight: 400; color: var(--suave); font-style: italic; }
+  .pie select { padding: 8px 10px; border: 1px solid var(--borde); border-radius: 8px; background: var(--blanco); font-weight: 600; color: var(--color); }
+  .vacio { text-align: center; color: var(--suave); padding: 40px 16px; }
+
+  dialog { border: 0; border-radius: 14px; padding: 22px; width: min(92vw, 380px); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  dialog h2 { color: var(--vino); margin-bottom: 14px; font-size: 22px; }
+  .fila-botones { display: flex; gap: 8px; }
+  .fila-botones .btn { flex: 1; }
+  .btn-gris { background: #eee; color: var(--texto); }
+  .aviso { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--texto); color: var(--blanco); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 5; max-width: calc(100vw - 32px); }
+  @media (min-width: 640px) { .barra .hola { width: auto; order: 0; } }
+</style>
+</head>
+<body>
+
+<section class="login" id="vista-login" hidden>
+  <form id="form-login">
+    <h1>Canastas MIA</h1>
+    <p class="sub">Panel de pedidos</p>
+    <label>Usuario<input id="l-usuario" autocomplete="username" required autocapitalize="none"></label>
+    <label>Contraseña<input id="l-clave" type="password" autocomplete="current-password" required></label>
+    <p class="error" id="l-error" role="alert"></p>
+    <button class="btn btn-principal" type="submit">Entrar</button>
+  </form>
+</section>
+
+<div id="vista-panel" hidden>
+  <header>
+    <div class="barra">
+      <h1>Pedidos</h1>
+      <span class="hola" id="hola"></span>
+      <button class="btn btn-claro" id="btn-clave" type="button">Contraseña</button>
+      <button class="btn btn-claro" id="btn-salir" type="button">Salir</button>
+    </div>
+  </header>
+  <main>
+    <div class="filtros" id="filtros" role="group" aria-label="Filtrar por estado"></div>
+    <div class="acciones"><span id="resumen"></span><button type="button" id="btn-recargar">↻ Actualizar</button></div>
+    <div class="lista" id="lista"></div>
+  </main>
+</div>
+
+<dialog id="dlg-clave">
+  <form id="form-clave">
+    <h2>Cambiar contraseña</h2>
+    <label>Contraseña actual<input id="c-actual" type="password" autocomplete="current-password" required></label>
+    <label>Nueva contraseña (mínimo 10 caracteres)<input id="c-nueva" type="password" autocomplete="new-password" minlength="10" required></label>
+    <p class="error" id="c-error" role="alert"></p>
+    <div class="fila-botones">
+      <button class="btn btn-gris" type="button" id="c-cancelar">Cancelar</button>
+      <button class="btn btn-principal" type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="aviso" id="aviso" role="status" hidden></div>
+
+<script>
+const ESTADOS = [
+  ["nuevo", "Nuevo"], ["pagado", "Pagado"], ["en_preparacion", "En preparación"],
+  ["entregado", "Entregado"], ["cancelado", "Cancelado"],
+];
+const NOMBRE_ESTADO = Object.fromEntries(ESTADOS);
+const PAGOS = { yape: "Yape", plin: "Plin", interbank: "Interbank" };
+const $ = (id) => document.getElementById(id);
+let pedidos = [];
+let filtro = "nuevo";
+
+// Llama a la API y devuelve el JSON. Si la sesión venció, vuelve al login.
+async function api(ruta, opciones = {}) {
+  const r = await fetch("/admin" + ruta, {
+    ...opciones,
+    headers: opciones.body ? { "Content-Type": "application/json" } : undefined,
+  });
+  const datos = await r.json().catch(() => ({}));
+  if (r.status === 401 && ruta !== "/login" && ruta !== "/clave") { mostrarLogin(); throw new Error("sesión"); }
+  if (!r.ok) throw new Error(datos.error || "Algo salió mal");
+  return datos;
+}
+
+function avisar(texto) {
+  const a = $("aviso");
+  a.textContent = texto; a.hidden = false;
+  clearTimeout(avisar.t); avisar.t = setTimeout(() => (a.hidden = true), 2500);
+}
+
+function mostrarLogin() {
+  $("vista-panel").hidden = true; $("vista-login").hidden = false; $("l-usuario").focus();
+}
+
+async function mostrarPanel(nombre) {
+  $("hola").textContent = "Hola, " + nombre;
+  $("vista-login").hidden = true; $("vista-panel").hidden = false;
+  await cargar();
+}
+
+async function cargar() {
+  pedidos = await api("/pedidos");
+  pintar();
+}
+
+// Crea un elemento con texto seguro (nunca se interpreta como HTML).
+function el(tag, props = {}, ...hijos) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) k.includes("-") ? e.setAttribute(k, v) : (e[k] = v);
+  e.append(...hijos.filter((h) => h != null));
+  return e;
+}
+
+const soles = (n) => "S/ " + n.toFixed(2);
+const fecha = (iso) => new Date(iso).toLocaleString("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
+
+function pintar() {
+  const cuenta = (est) => pedidos.filter((p) => !est || p.estado === est).length;
+  $("filtros").replaceChildren(
+    ...[["", "Todos"], ...ESTADOS].map(([est, nombre]) => {
+      const b = el("button", { type: "button" }, nombre, el("span", { className: "n", textContent: cuenta(est) }));
+      b.setAttribute("aria-pressed", filtro === est);
+      b.onclick = () => { filtro = est; pintar(); };
+      return b;
+    })
+  );
+
+  const visibles = pedidos.filter((p) => !filtro || p.estado === filtro);
+  $("resumen").textContent = visibles.length + (visibles.length === 1 ? " pedido" : " pedidos");
+  if (!visibles.length) {
+    $("lista").replaceChildren(el("p", { className: "vacio", textContent: "No hay pedidos aquí." }));
+    return;
+  }
+
+  $("lista").replaceChildren(...visibles.map((p) => {
+    const select = el("select", { "aria-label": "Estado del pedido " + p.codigo },
+      ...ESTADOS.map(([v, n]) => el("option", { value: v, textContent: n, selected: v === p.estado })));
+    select.onchange = async () => {
+      const anterior = p.estado;
+      try {
+        await api("/pedidos/" + p.codigo, { method: "PATCH", body: JSON.stringify({ estado: select.value }) });
+        p.estado = select.value;
+        avisar(p.codigo + " → " + NOMBRE_ESTADO[p.estado]);
+        pintar();
+      } catch (e) {
+        select.value = anterior;
+        if (e.message !== "sesión") avisar(e.message);
+      }
+    };
+
+    const wa = el("a", {
+      href: "https://wa.me/51" + p.celular, target: "_blank", rel: "noopener",
+      textContent: p.celular.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3"),
+    });
+
+    const tarjeta = el("article", { className: "pedido" },
+      el("div", { className: "top" },
+        el("span", { className: "codigo", textContent: p.codigo }),
+        el("span", { className: "fecha", textContent: fecha(p.creado_en) })),
+      el("p", { className: "cliente", textContent: p.nombre + " " + p.apellido }),
+      el("p", { className: "contacto" }, "WhatsApp: ", wa, " · " + PAGOS[p.metodo_pago]),
+      el("ul", {}, ...p.items.map((i) => el("li", {
+        textContent: i.cantidad + " × " + i.canasta + (i.precio != null ? " (" + soles(i.precio) + ")" : ""),
+      }))),
+      p.nota ? el("p", { className: "nota", textContent: "📝 " + p.nota }) : null,
+      el("div", { className: "pie" },
+        p.total != null
+          ? el("span", { className: "total", textContent: "Total: " + soles(p.total) })
+          : el("span", { className: "total sin", textContent: "Precio por confirmar" }),
+        select)
+    );
+    tarjeta.style.setProperty("--color", `var(--${p.estado})`);
+    return tarjeta;
+  }));
+}
+
+$("form-login").onsubmit = async (e) => {
+  e.preventDefault();
+  $("l-error").textContent = "";
+  try {
+    const { nombre } = await api("/login", {
+      method: "POST",
+      body: JSON.stringify({ usuario: $("l-usuario").value, clave: $("l-clave").value }),
+    });
+    $("l-clave").value = "";
+    await mostrarPanel(nombre);
+  } catch (err) {
+    $("l-error").textContent = err.message;
+  }
+};
+
+$("btn-salir").onclick = async () => { await api("/logout", { method: "POST" }); mostrarLogin(); };
+$("btn-recargar").onclick = () => cargar().then(() => avisar("Actualizado")).catch(() => {});
+
+$("btn-clave").onclick = () => { $("form-clave").reset(); $("c-error").textContent = ""; $("dlg-clave").showModal(); };
+$("c-cancelar").onclick = () => $("dlg-clave").close();
+$("form-clave").onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    await api("/clave", { method: "POST", body: JSON.stringify({ actual: $("c-actual").value, nueva: $("c-nueva").value }) });
+    $("dlg-clave").close();
+    avisar("Contraseña cambiada");
+  } catch (err) {
+    $("c-error").textContent = err.message;
+  }
+};
+
+// Al abrir: si ya hay sesión, entra directo; si no, muestra el login.
+api("/yo").then((u) => mostrarPanel(u.nombre)).catch(() => {});
+</script>
+</body>
+</html>
