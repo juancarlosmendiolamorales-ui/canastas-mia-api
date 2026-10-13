@@ -14,9 +14,9 @@ const ESTADOS = ["nuevo", "pagado", "en_preparacion", "entregado", "cancelado"];
 // Freno contra quien prueba contraseñas una y otra vez. Tres límites cada 15 minutos:
 //  - 5 intentos por usuario desde la misma IP.
 //  - 20 intentos desde la misma IP, aunque cambie de usuario.
-//  - 100 intentos contra la misma cuenta, sumando todas las IP. Frena a quien
-//    usa muchas IP a la vez. Es alto a propósito: si fuera bajo, un extraño
-//    podría bloquear la cuenta de Mia fallando unas pocas veces.
+//  - 100 intentos contra una cuenta que existe, sumando todas las IP. Frena a
+//    quien usa muchas IP a la vez. Es alto a propósito: si fuera bajo, un
+//    extraño podría bloquear la cuenta de Mia fallando unas pocas veces.
 // El bloqueo solo impide iniciar sesión de nuevo: quien ya entró sigue adentro.
 const VENTANA_MS = 15 * 60 * 1000;
 const LIMITE_USUARIO_IP = 5;
@@ -24,6 +24,8 @@ const LIMITE_IP = 20;
 const LIMITE_CUENTA = 100;
 const MAX_REGISTROS = 10000; // tope para que la memoria no crezca sin fin
 const intentos = new Map(); // clave -> { cuenta, limite, desde }  (en orden de llegada)
+// Aparte, y solo para cuentas que existen: así no se llena con usuarios inventados.
+const porCuenta = new Map(); // id de usuario -> { cuenta, limite, desde }
 let ultimaLimpieza = 0;
 
 // Una red IPv6 tiene millones de direcciones (todo un /64 suele ser de una
@@ -43,31 +45,30 @@ function claveIp(ip = "") {
 const bloqueada = (i) => i.cuenta >= i.limite;
 
 // Borra registros vencidos (como mucho una vez por minuto) y, si aun así hay
-// demasiados, los más antiguos que NO estén bloqueados. Nunca se borra un
-// bloqueo vigente: si no, un atacante podría inundar la lista para que se
-// borre el suyo.
+// demasiados, los más antiguos: primero los que no están bloqueados.
+// Nunca se rechaza a alguien por tener la lista llena; eso dejaría a todos
+// sin poder entrar.
 function limpiar(ahora) {
   if (intentos.size < MAX_REGISTROS && ahora - ultimaLimpieza < 60_000) return;
   ultimaLimpieza = ahora;
   for (const [k, i] of intentos) if (ahora - i.desde > VENTANA_MS) intentos.delete(k);
-  for (const [k, i] of intentos) {
-    if (intentos.size < MAX_REGISTROS) break;
-    if (!bloqueada(i)) intentos.delete(k);
+  for (const borrarBloqueadas of [false, true]) {
+    for (const [k, i] of intentos) {
+      if (intentos.size < MAX_REGISTROS) return;
+      if (borrarBloqueadas || !bloqueada(i)) intentos.delete(k);
+    }
   }
 }
 
-function sumar(clave, limite, ahora) {
-  let i = intentos.get(clave);
+function sumar(mapa, clave, limite, ahora) {
+  let i = mapa.get(clave);
   if (!i || ahora - i.desde > VENTANA_MS) {
-    // Si la lista está llena solo de bloqueos, no se aceptan claves nuevas
-    // hasta que venzan: es mejor frenar logins un rato que perder bloqueos.
-    if (intentos.size >= MAX_REGISTROS && !i) return false;
-    intentos.delete(clave); // así queda al final, como el más nuevo
+    mapa.delete(clave); // así queda al final, como el más nuevo
     i = { cuenta: 0, limite, desde: ahora };
   }
   if (bloqueada(i)) return false;
   i.cuenta++;
-  intentos.set(clave, i);
+  mapa.set(clave, i);
   return true;
 }
 
@@ -78,9 +79,8 @@ function sumar(clave, limite, ahora) {
 function usarIntento(ip, usuario) {
   const ahora = Date.now();
   limpiar(ahora);
-  return sumar(`ip:${ip}`, LIMITE_IP, ahora)
-    && sumar(`${ip}|${usuario}`, LIMITE_USUARIO_IP, ahora)
-    && sumar(`cuenta:${usuario}`, LIMITE_CUENTA, ahora);
+  return sumar(intentos, `ip:${ip}`, LIMITE_IP, ahora)
+    && sumar(intentos, `${ip}|${usuario}`, LIMITE_USUARIO_IP, ahora);
 }
 
 // Hash de una contraseña al azar. Se usa cuando el usuario no existe, para que
@@ -97,6 +97,15 @@ rutasAdmin.post("/login", async (req, res) => {
     return res.status(429).json({ error: "Demasiados intentos. Espera 15 minutos." });
   }
   const { rows } = await db.query("SELECT id, nombre, hash_clave FROM usuarios WHERE usuario = $1", [usuario]);
+  // También se cuenta antes de revisar la clave, por la misma razón de arriba.
+  // Los usuarios que no existen se cuentan igual (en la lista que se puede
+  // limpiar), para que responder "demasiados intentos" no revele cuáles existen.
+  const cuentaOk = rows.length
+    ? sumar(porCuenta, rows[0].id, LIMITE_CUENTA, Date.now())
+    : sumar(intentos, `cuenta:${usuario}`, LIMITE_CUENTA, Date.now());
+  if (!cuentaOk) {
+    return res.status(429).json({ error: "Demasiados intentos. Espera 15 minutos." });
+  }
   // Siempre se calcula un hash y siempre se da el mismo mensaje,
   // exista o no el usuario.
   const correcta = await claveCorrecta(clave, rows[0]?.hash_clave ?? HASH_FALSO);
