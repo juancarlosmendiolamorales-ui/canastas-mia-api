@@ -11,6 +11,8 @@ const METODOS_PAGO = ["yape", "plin", "interbank"];
 
 // Contra el spam: como mucho 10 pedidos por hora desde una misma IP.
 const permitirPedido = crearLimite({ max: 10, ventanaMs: 60 * 60 * 1000 });
+// Para que nadie pruebe códigos al azar hasta dar con pedidos ajenos.
+const permitirConsulta = crearLimite({ max: 30, ventanaMs: 15 * 60 * 1000 });
 
 // Deja solo los 9 dígitos: acepta "987 654 321", "+51 987-654-321", etc.
 function normalizarCelular(c) {
@@ -116,7 +118,7 @@ rutasPedidos.post("/", async (req, res) => {
     await cliente.query("COMMIT");
     res.status(201).json({ codigo: pedido.codigo, estado: pedido.estado, total, creado_en: pedido.creado_en });
   } catch (e) {
-    await cliente.query("ROLLBACK");
+    await cliente.query("ROLLBACK").catch(() => {});
     // Dos envíos con la misma clave al mismo tiempo: el segundo choca con el
     // UNIQUE de la base de datos. Se responde con el pedido que ya se guardó.
     if (e.code === "23505" && e.constraint?.includes("clave_envio")) {
@@ -139,6 +141,11 @@ async function buscarPorClave(clave) {
 // GET /pedidos/MIA-7KQ2PX: el cliente ve el estado de su pedido.
 // No devuelve celular ni apellido: cualquiera con el código podría verlo.
 rutasPedidos.get("/:codigo", async (req, res) => {
+  if (!permitirConsulta(claveIp(req.ip))) {
+    return res.status(429).json({ error: "Demasiadas consultas seguidas. Intenta más tarde." });
+  }
+  const codigo = req.params.codigo.toUpperCase();
+  if (!/^MIA-[A-Z0-9]{6}$/.test(codigo)) return res.status(404).json({ error: "Pedido no encontrado" });
   const { rows } = await db.query(
     `SELECT p.codigo, p.nombre, p.estado, p.total::float AS total, p.creado_en,
             json_agg(json_build_object('canasta', i.nombre_canasta, 'cantidad', i.cantidad)
@@ -146,7 +153,7 @@ rutasPedidos.get("/:codigo", async (req, res) => {
      FROM pedidos p JOIN pedido_items i ON i.pedido_id = p.id
      WHERE p.codigo = $1
      GROUP BY p.id`,
-    [req.params.codigo.toUpperCase()]
+    [codigo]
   );
   if (!rows.length) return res.status(404).json({ error: "Pedido no encontrado" });
   res.json(rows[0]);

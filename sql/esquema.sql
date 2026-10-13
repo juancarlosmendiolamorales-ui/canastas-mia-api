@@ -66,3 +66,29 @@ CREATE TABLE IF NOT EXISTS sesiones (
   usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
   expira_en  TIMESTAMPTZ NOT NULL
 );
+
+-- Libro de Reclamaciones virtual (obligatorio en Perú: Código de Protección y
+-- Defensa del Consumidor y D.S. 011-2011-PCM). Cada hoja lleva un número
+-- correlativo y el negocio tiene 15 días hábiles para responder.
+-- Los reclamos no se borran: INDECOPI puede pedirlos (se guardan 2 años como mínimo).
+CREATE TABLE IF NOT EXISTS reclamos (
+  id                SERIAL PRIMARY KEY,           -- el número correlativo de la hoja
+  clave_envio       TEXT UNIQUE,                  -- evita duplicados si se envía dos veces
+  tipo              TEXT NOT NULL CHECK (tipo IN ('reclamo', 'queja')),
+  nombre            TEXT NOT NULL,
+  tipo_documento    TEXT NOT NULL CHECK (tipo_documento IN ('DNI', 'CE', 'Pasaporte', 'RUC')),
+  documento         TEXT NOT NULL,
+  domicilio         TEXT NOT NULL,
+  telefono          TEXT NOT NULL,
+  email             TEXT NOT NULL,
+  apoderado         TEXT,                         -- padre o madre, si es menor de edad
+  bien              TEXT NOT NULL CHECK (bien IN ('producto', 'servicio')),
+  monto             NUMERIC(10, 2),
+  descripcion_bien  TEXT NOT NULL,
+  codigo_pedido     TEXT,
+  detalle           TEXT NOT NULL,
+  pedido_consumidor TEXT NOT NULL,
+  creado_en         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  respuesta         TEXT,
+  respondido_en     TIMESTAMPTZ
+);

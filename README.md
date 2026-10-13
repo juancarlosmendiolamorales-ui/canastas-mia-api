@@ -22,6 +22,7 @@ Render: si nadie lo usó en un rato, la primera visita tarda unos 50 segundos en
  Panel (Mia)
  iniciar sesión    ──POST──▶ /admin/login         ──SQL──▶  usuarios, sesiones
  ver / actualizar  ──────▶ /admin/pedidos        ──SQL──▶  pedidos
+ reclamos          ──────▶ /admin/reclamos       ──SQL──▶  reclamos
 ```
 
 ## Rutas de la API
@@ -36,6 +37,9 @@ Render: si nadie lo usó en un rato, la primera visita tarda unos 50 segundos en
 | GET | `/admin/pedidos?estado=` | Todos los pedidos, con filtro por estado | Sí |
 | PATCH | `/admin/pedidos/:codigo` | Cambiar el estado de un pedido | Sí |
 | POST | `/admin/clave` | Cambiar mi contraseña | Sí |
+| POST | `/reclamos` | Libro de Reclamaciones: registra un reclamo o queja y devuelve su número (`R-000001`) | No |
+| GET | `/admin/reclamos` | Hojas del Libro de Reclamaciones con su plazo de respuesta | Sí |
+| PATCH | `/admin/reclamos/:id` | Registrar la respuesta al cliente | Sí |
 | — | `/panel` | Panel web (HTML + JavaScript) | Sí |
 
 Ejemplo de pedido:
@@ -74,6 +78,14 @@ POST /pedidos
 - **Mismo mensaje y mismo tiempo de respuesta** si el usuario no existe o la clave está mal,
   para no revelar qué usuarios existen.
 - **El panel nunca inserta HTML** con datos del cliente (usa `textContent`), para evitar XSS.
+- **Cabeceras de seguridad** en todas las respuestas: Content-Security-Policy (el panel solo carga
+  scripts propios), anti-clickjacking (`frame-ancestors 'none'`), `nosniff`, HSTS y `no-store` en
+  las rutas con datos personales.
+- **Libro de Reclamaciones virtual** (obligatorio en Perú): hojas con número correlativo, plazo de
+  15 días hábiles visible en el panel y constancia para el cliente.
+- **Retención de datos:** los pedidos se borran solos a los 2 años, como dice la política de
+  privacidad; los reclamos se conservan.
+- **Tolerante a cortes de la base:** si Neon cierra una conexión inactiva, el servidor no se cae.
 
 ## Tecnologías
 

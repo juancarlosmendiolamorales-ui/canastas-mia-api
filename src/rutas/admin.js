@@ -3,6 +3,7 @@ import { Router } from "express";
 import { randomBytes, createHmac } from "node:crypto";
 import { db } from "../db.js";
 import { claveIp } from "../ip.js";
+import { numeroHoja } from "./reclamos.js";
 import {
   COOKIE, claveCorrecta, hashearClave, crearSesion, cerrarSesion,
   opcionesCookie, leerCookie, requiereLogin, hashToken,
@@ -108,6 +109,8 @@ rutasAdmin.post("/login", async (req, res) => {
     return res.status(401).json({ error: "Usuario o contraseña incorrectos" });
   }
   intentos.delete(`${ip}|${usuario}`);
+  // De paso, borra las sesiones vencidas de todos (si no, se acumulan para siempre).
+  await db.query("DELETE FROM sesiones WHERE expira_en < now()");
   const token = await crearSesion(rows[0].id);
   res.cookie(COOKIE, token, opcionesCookie());
   res.json({ nombre: rows[0].nombre });
@@ -160,7 +163,7 @@ rutasAdmin.get("/pedidos", async (req, res) => {
      WHERE $1::text IS NULL OR p.estado = $1
      GROUP BY p.id
      ORDER BY p.creado_en DESC
-     LIMIT 200`,
+     LIMIT 1000`,
     [estado || null]
   );
   res.json(rows);
@@ -177,5 +180,33 @@ rutasAdmin.patch("/pedidos/:codigo", async (req, res) => {
     [estado, req.params.codigo.toUpperCase()]
   );
   if (!rows.length) return res.status(404).json({ error: "Pedido no encontrado" });
+  res.json(rows[0]);
+});
+
+// GET /admin/reclamos: hojas del Libro de Reclamaciones, las más recientes primero.
+rutasAdmin.get("/reclamos", async (req, res) => {
+  const { rows } = await db.query(
+    `SELECT id, tipo, nombre, tipo_documento, documento, domicilio, telefono, email, apoderado, bien,
+            monto::float AS monto, descripcion_bien, codigo_pedido, detalle, pedido_consumidor,
+            creado_en, respuesta, respondido_en
+     FROM reclamos ORDER BY id DESC LIMIT 1000`
+  );
+  res.json(rows.map((r) => ({ ...r, numero: numeroHoja(r.id) })));
+});
+
+// PATCH /admin/reclamos/12  { respuesta }: anota la respuesta que se le dio al cliente.
+rutasAdmin.patch("/reclamos/:id", async (req, res) => {
+  const respuesta = typeof req.body?.respuesta === "string" ? req.body.respuesta.trim() : "";
+  if (!respuesta || respuesta.length > 3000) {
+    return res.status(400).json({ error: "Escribe la respuesta (máximo 3000 caracteres)" });
+  }
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) return res.status(404).json({ error: "Reclamo no encontrado" });
+  const { rows } = await db.query(
+    `UPDATE reclamos SET respuesta = $1, respondido_en = now() WHERE id = $2
+     RETURNING respuesta, respondido_en`,
+    [respuesta, id]
+  );
+  if (!rows.length) return res.status(404).json({ error: "Reclamo no encontrado" });
   res.json(rows[0]);
 });

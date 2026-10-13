@@ -43,7 +43,7 @@
   .acciones button { background: none; border: 0; color: var(--vino); font-weight: 600; cursor: pointer; padding: 6px 0; }
   .lista { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); }
   .pedido { background: var(--blanco); border: 1px solid var(--borde); border-left: 5px solid var(--color, var(--borde)); border-radius: 10px; padding: 14px 16px; }
-  .pedido .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
   .codigo { font-family: ui-monospace, Menlo, monospace; font-weight: 700; }
   .fecha { color: var(--suave); font-size: 13px; }
   .cliente { font-weight: 600; margin: 8px 0 2px; }
@@ -65,6 +65,21 @@
   .btn-gris { background: #eee; color: var(--texto); }
   .aviso { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--texto); color: var(--blanco); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 5; max-width: calc(100vw - 32px); }
   @media (min-width: 640px) { .barra .hola { width: auto; order: 0; } }
+
+  /* Pestañas Pedidos / Reclamos */
+  .pestanas { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 2px solid var(--borde); }
+  .pestanas button { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: 10px 14px; font-weight: 600; color: var(--suave); cursor: pointer; }
+  .pestanas button[aria-selected="true"] { color: var(--vino); border-bottom-color: var(--vino); }
+  .pestanas .alerta { background: #b91c1c; color: var(--blanco); border-radius: 999px; padding: 0 7px; font-size: 12px; margin-left: 4px; }
+  .reclamo { background: var(--blanco); border: 1px solid var(--borde); border-left: 5px solid var(--color); border-radius: 10px; padding: 14px 16px; }
+  .reclamo dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 10px 0; font-size: 14px; }
+  .reclamo dt { color: var(--suave); }
+  .reclamo dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .plazo { font-size: 14px; font-weight: 600; color: var(--color); }
+  .reclamo .botones { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .reclamo .botones a, .reclamo .botones button { flex: 1 1 160px; text-align: center; text-decoration: none; font-size: 14px; }
+  .btn-borde { background: var(--blanco); color: var(--vino); border: 1px solid var(--vino); }
+  textarea { display: block; width: 100%; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--borde); border-radius: 8px; font: inherit; resize: vertical; }
 </style>
 </head>
 <body>
@@ -83,16 +98,26 @@
 <div id="vista-panel" hidden>
   <header>
     <div class="barra">
-      <h1>Pedidos</h1>
+      <h1>Canastas MIA</h1>
       <span class="hola" id="hola"></span>
       <button class="btn btn-claro" id="btn-clave" type="button">Contraseña</button>
       <button class="btn btn-claro" id="btn-salir" type="button">Salir</button>
     </div>
   </header>
   <main>
+    <div class="pestanas" role="tablist">
+      <button type="button" role="tab" id="tab-pedidos" aria-selected="true" aria-controls="sec-pedidos">Pedidos</button>
+      <button type="button" role="tab" id="tab-reclamos" aria-selected="false" aria-controls="sec-reclamos">Reclamos <span class="alerta" id="n-reclamos" hidden></span></button>
+    </div>
+    <section id="sec-pedidos" role="tabpanel" aria-labelledby="tab-pedidos">
     <div class="filtros" id="filtros" role="group" aria-label="Filtrar por estado"></div>
     <div class="acciones"><span id="resumen"></span><button type="button" id="btn-recargar">↻ Actualizar</button></div>
     <div class="lista" id="lista"></div>
+    </section>
+    <section id="sec-reclamos" role="tabpanel" aria-labelledby="tab-reclamos" hidden>
+      <p class="acciones">Libro de Reclamaciones: responde cada hoja en 15 días hábiles como máximo (lo exige INDECOPI).</p>
+      <div class="lista" id="lista-reclamos"></div>
+    </section>
   </main>
 </div>
 
@@ -109,156 +134,21 @@
   </form>
 </dialog>
 
+<dialog id="dlg-respuesta">
+  <form id="form-respuesta">
+    <h2>Respuesta <span id="r-numero"></span></h2>
+    <label>Qué se le respondió al cliente y qué acciones se tomaron
+      <textarea id="r-texto" rows="7" maxlength="3000" required></textarea></label>
+    <p class="error" id="r-error" role="alert"></p>
+    <div class="fila-botones">
+      <button class="btn btn-gris" type="button" id="r-cancelar">Cancelar</button>
+      <button class="btn btn-principal" type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
 <div class="aviso" id="aviso" role="status" hidden></div>
 
-<script>
-const ESTADOS = [
-  ["nuevo", "Nuevo"], ["pagado", "Pagado"], ["en_preparacion", "En preparación"],
-  ["entregado", "Entregado"], ["cancelado", "Cancelado"],
-];
-const NOMBRE_ESTADO = Object.fromEntries(ESTADOS);
-const PAGOS = { yape: "Yape", plin: "Plin", interbank: "Interbank" };
-const $ = (id) => document.getElementById(id);
-let pedidos = [];
-let filtro = "nuevo";
-
-// Llama a la API y devuelve el JSON. Si la sesión venció, vuelve al login.
-async function api(ruta, opciones = {}) {
-  const r = await fetch("/admin" + ruta, {
-    ...opciones,
-    headers: opciones.body ? { "Content-Type": "application/json" } : undefined,
-  });
-  const datos = await r.json().catch(() => ({}));
-  if (r.status === 401 && ruta !== "/login" && ruta !== "/clave") { mostrarLogin(); throw new Error("sesión"); }
-  if (!r.ok) throw new Error(datos.error || "Algo salió mal");
-  return datos;
-}
-
-function avisar(texto) {
-  const a = $("aviso");
-  a.textContent = texto; a.hidden = false;
-  clearTimeout(avisar.t); avisar.t = setTimeout(() => (a.hidden = true), 2500);
-}
-
-function mostrarLogin() {
-  $("vista-panel").hidden = true; $("vista-login").hidden = false; $("l-usuario").focus();
-}
-
-async function mostrarPanel(nombre) {
-  $("hola").textContent = "Hola, " + nombre;
-  $("vista-login").hidden = true; $("vista-panel").hidden = false;
-  await cargar();
-}
-
-async function cargar() {
-  pedidos = await api("/pedidos");
-  pintar();
-}
-
-// Crea un elemento con texto seguro (nunca se interpreta como HTML).
-function el(tag, props = {}, ...hijos) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(props)) k.includes("-") ? e.setAttribute(k, v) : (e[k] = v);
-  e.append(...hijos.filter((h) => h != null));
-  return e;
-}
-
-const soles = (n) => "S/ " + n.toFixed(2);
-const fecha = (iso) => new Date(iso).toLocaleString("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
-
-function pintar() {
-  const cuenta = (est) => pedidos.filter((p) => !est || p.estado === est).length;
-  $("filtros").replaceChildren(
-    ...[["", "Todos"], ...ESTADOS].map(([est, nombre]) => {
-      const b = el("button", { type: "button" }, nombre, el("span", { className: "n", textContent: cuenta(est) }));
-      b.setAttribute("aria-pressed", filtro === est);
-      b.onclick = () => { filtro = est; pintar(); };
-      return b;
-    })
-  );
-
-  const visibles = pedidos.filter((p) => !filtro || p.estado === filtro);
-  $("resumen").textContent = visibles.length + (visibles.length === 1 ? " pedido" : " pedidos");
-  if (!visibles.length) {
-    $("lista").replaceChildren(el("p", { className: "vacio", textContent: "No hay pedidos aquí." }));
-    return;
-  }
-
-  $("lista").replaceChildren(...visibles.map((p) => {
-    const select = el("select", { "aria-label": "Estado del pedido " + p.codigo },
-      ...ESTADOS.map(([v, n]) => el("option", { value: v, textContent: n, selected: v === p.estado })));
-    select.onchange = async () => {
-      const anterior = p.estado;
-      try {
-        await api("/pedidos/" + p.codigo, { method: "PATCH", body: JSON.stringify({ estado: select.value }) });
-        p.estado = select.value;
-        avisar(p.codigo + " → " + NOMBRE_ESTADO[p.estado]);
-        pintar();
-      } catch (e) {
-        select.value = anterior;
-        if (e.message !== "sesión") avisar(e.message);
-      }
-    };
-
-    const wa = el("a", {
-      href: "https://wa.me/51" + p.celular, target: "_blank", rel: "noopener",
-      textContent: p.celular.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3"),
-    });
-
-    const tarjeta = el("article", { className: "pedido" },
-      el("div", { className: "top" },
-        el("span", { className: "codigo", textContent: p.codigo }),
-        el("span", { className: "fecha", textContent: fecha(p.creado_en) })),
-      el("p", { className: "cliente", textContent: p.nombre + " " + p.apellido }),
-      el("p", { className: "contacto" }, "WhatsApp: ", wa, " · " + PAGOS[p.metodo_pago]),
-      el("ul", {}, ...p.items.map((i) => el("li", {
-        textContent: i.cantidad + " × " + i.canasta + (i.precio != null ? " (" + soles(i.precio) + ")" : ""),
-      }))),
-      p.nota ? el("p", { className: "nota", textContent: "📝 " + p.nota }) : null,
-      el("div", { className: "pie" },
-        p.total != null
-          ? el("span", { className: "total", textContent: "Total: " + soles(p.total) })
-          : el("span", { className: "total sin", textContent: "Precio por confirmar" }),
-        select)
-    );
-    tarjeta.style.setProperty("--color", `var(--${p.estado})`);
-    return tarjeta;
-  }));
-}
-
-$("form-login").onsubmit = async (e) => {
-  e.preventDefault();
-  $("l-error").textContent = "";
-  try {
-    const { nombre } = await api("/login", {
-      method: "POST",
-      body: JSON.stringify({ usuario: $("l-usuario").value, clave: $("l-clave").value }),
-    });
-    $("l-clave").value = "";
-    await mostrarPanel(nombre);
-  } catch (err) {
-    $("l-error").textContent = err.message;
-  }
-};
-
-$("btn-salir").onclick = async () => { await api("/logout", { method: "POST" }); mostrarLogin(); };
-$("btn-recargar").onclick = () => cargar().then(() => avisar("Actualizado")).catch(() => {});
-
-$("btn-clave").onclick = () => { $("form-clave").reset(); $("c-error").textContent = ""; $("dlg-clave").showModal(); };
-$("c-cancelar").onclick = () => $("dlg-clave").close();
-$("form-clave").onsubmit = async (e) => {
-  e.preventDefault();
-  try {
-    await api("/clave", { method: "POST", body: JSON.stringify({ actual: $("c-actual").value, nueva: $("c-nueva").value }) });
-    $("dlg-clave").close();
-    avisar("Contraseña cambiada");
-  } catch (err) {
-    $("c-error").textContent = err.message;
-  }
-};
-
-// Al abrir: si ya hay sesión, entra directo; si no, muestra el login.
-api("/yo").then((u) => mostrarPanel(u.nombre)).catch(() => {});
-</script>
+<script src="panel.js"></script>
 </body>
 </html>
