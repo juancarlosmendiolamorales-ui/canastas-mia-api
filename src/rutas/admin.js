@@ -1,6 +1,6 @@
 // Rutas del panel: login y manejo de pedidos. Todo menos /login pide sesión.
 import { Router } from "express";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHmac } from "node:crypto";
 import { db } from "../db.js";
 import {
   COOKIE, claveCorrecta, hashearClave, crearSesion, cerrarSesion,
@@ -14,7 +14,7 @@ const ESTADOS = ["nuevo", "pagado", "en_preparacion", "entregado", "cancelado"];
 // Freno contra quien prueba contraseñas una y otra vez. Tres límites cada 15 minutos:
 //  - 5 intentos por usuario desde la misma IP.
 //  - 20 intentos desde la misma IP, aunque cambie de usuario.
-//  - 100 intentos contra una cuenta que existe, sumando todas las IP. Frena a
+//  - 100 intentos contra una misma cuenta, sumando todas las IP. Frena a
 //    quien usa muchas IP a la vez. Es alto a propósito: si fuera bajo, un
 //    extraño podría bloquear la cuenta de Mia fallando unas pocas veces.
 // El bloqueo solo impide iniciar sesión de nuevo: quien ya entró sigue adentro.
@@ -24,8 +24,24 @@ const LIMITE_IP = 20;
 const LIMITE_CUENTA = 100;
 const MAX_REGISTROS = 10000; // tope para que la memoria no crezca sin fin
 const intentos = new Map(); // clave -> { cuenta, limite, desde }  (en orden de llegada)
-// Aparte, y solo para cuentas que existen: así no se llena con usuarios inventados.
-const porCuenta = new Map(); // id de usuario -> { cuenta, limite, desde }
+// Límite por cuenta: una tabla fija de 4096 casilleros. Cada nombre de usuario
+// cae siempre en el mismo casillero (según un hash con una clave secreta al
+// azar). Ocupa siempre la misma memoria y trata igual a usuarios reales e
+// inventados, así no se puede saber cuáles existen.
+const CASILLEROS = 4096;
+const SECRETO_CASILLEROS = randomBytes(32);
+const porCuenta = Array.from({ length: CASILLEROS }, () => null);
+const casillero = (usuario) =>
+  createHmac("sha256", SECRETO_CASILLEROS).update(usuario).digest().readUInt32BE(0) % CASILLEROS;
+
+function sumarCuenta(usuario, ahora) {
+  const n = casillero(usuario);
+  let i = porCuenta[n];
+  if (!i || ahora - i.desde > VENTANA_MS) i = porCuenta[n] = { cuenta: 0, limite: LIMITE_CUENTA, desde: ahora };
+  if (i.cuenta >= i.limite) return false;
+  i.cuenta++;
+  return true;
+}
 let ultimaLimpieza = 0;
 
 // Una red IPv6 tiene millones de direcciones (todo un /64 suele ser de una
@@ -80,7 +96,8 @@ function usarIntento(ip, usuario) {
   const ahora = Date.now();
   limpiar(ahora);
   return sumar(intentos, `ip:${ip}`, LIMITE_IP, ahora)
-    && sumar(intentos, `${ip}|${usuario}`, LIMITE_USUARIO_IP, ahora);
+    && sumar(intentos, `${ip}|${usuario}`, LIMITE_USUARIO_IP, ahora)
+    && sumarCuenta(usuario, ahora);
 }
 
 // Hash de una contraseña al azar. Se usa cuando el usuario no existe, para que
@@ -97,15 +114,6 @@ rutasAdmin.post("/login", async (req, res) => {
     return res.status(429).json({ error: "Demasiados intentos. Espera 15 minutos." });
   }
   const { rows } = await db.query("SELECT id, nombre, hash_clave FROM usuarios WHERE usuario = $1", [usuario]);
-  // También se cuenta antes de revisar la clave, por la misma razón de arriba.
-  // Los usuarios que no existen se cuentan igual (en la lista que se puede
-  // limpiar), para que responder "demasiados intentos" no revele cuáles existen.
-  const cuentaOk = rows.length
-    ? sumar(porCuenta, rows[0].id, LIMITE_CUENTA, Date.now())
-    : sumar(intentos, `cuenta:${usuario}`, LIMITE_CUENTA, Date.now());
-  if (!cuentaOk) {
-    return res.status(429).json({ error: "Demasiados intentos. Espera 15 minutos." });
-  }
   // Siempre se calcula un hash y siempre se da el mismo mensaje,
   // exista o no el usuario.
   const correcta = await claveCorrecta(clave, rows[0]?.hash_clave ?? HASH_FALSO);
