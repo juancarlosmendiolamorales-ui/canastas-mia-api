@@ -2,10 +2,21 @@
 import { Router } from "express";
 import { randomInt } from "node:crypto";
 import { db } from "../db.js";
+import { claveIp } from "../ip.js";
+import { crearLimite } from "../limite.js";
 
 export const rutasPedidos = Router();
 
 const METODOS_PAGO = ["yape", "plin", "interbank"];
+
+// Contra el spam: como mucho 10 pedidos por hora desde una misma IP.
+const permitirPedido = crearLimite({ max: 10, ventanaMs: 60 * 60 * 1000 });
+
+// Deja solo los 9 dígitos: acepta "987 654 321", "+51 987-654-321", etc.
+function normalizarCelular(c) {
+  const digitos = String(c ?? "").replace(/\D/g, "");
+  return digitos.length === 11 && digitos.startsWith("51") ? digitos.slice(2) : digitos;
+}
 
 // Revisa que el pedido venga completo y con datos que tengan sentido.
 // Devuelve la lista de errores (vacía si todo está bien).
@@ -15,15 +26,21 @@ function validarPedido(p) {
   for (const campo of ["nombre", "apellido"]) {
     if (typeof p[campo] !== "string" || !p[campo].trim()) errores.push(`Falta el ${campo}`);
   }
-  if (typeof p.celular !== "string" || !/^9\d{8}$/.test(p.celular.replace(/\s/g, ""))) {
+  if (typeof p.celular !== "string" || !/^9\d{8}$/.test(normalizarCelular(p.celular))) {
     errores.push("El celular debe tener 9 dígitos y empezar con 9");
   }
   if (!METODOS_PAGO.includes(p.metodo_pago)) {
     errores.push(`El método de pago debe ser: ${METODOS_PAGO.join(", ")}`);
   }
   if (p.nota != null && typeof p.nota !== "string") errores.push("La nota debe ser texto");
-  if (!Array.isArray(p.items) || !p.items.length) {
-    errores.push("El pedido debe tener al menos una canasta");
+  for (const campo of ["nombre", "apellido", "nota"]) {
+    if (typeof p[campo] === "string" && p[campo].length > 300) errores.push(`El ${campo} es demasiado largo`);
+  }
+  if (p.clave_envio != null && (typeof p.clave_envio !== "string" || !/^[A-Za-z0-9-]{8,64}$/.test(p.clave_envio))) {
+    errores.push("clave_envio no es válida");
+  }
+  if (!Array.isArray(p.items) || !p.items.length || p.items.length > 50) {
+    errores.push("El pedido debe tener entre 1 y 50 canastas");
   } else {
     p.items.forEach((item, i) => {
       if (typeof item?.canasta_id !== "string") errores.push(`Canasta ${i + 1}: falta canasta_id`);
@@ -44,10 +61,20 @@ function nuevoCodigo() {
 }
 
 // POST /pedidos: el cliente manda su pedido y se guarda en la base de datos.
+// clave_envio (opcional): un código al azar que pone el catálogo. Si el cliente
+// toca "Enviar" dos veces, llega la misma clave y no se guarda el pedido dos veces.
 rutasPedidos.post("/", async (req, res) => {
   const errores = validarPedido(req.body);
   if (errores.length) return res.status(400).json({ errores });
   const p = req.body;
+
+  if (p.clave_envio) {
+    const ya = await buscarPorClave(p.clave_envio);
+    if (ya) return res.json(ya);
+  }
+  if (!permitirPedido(claveIp(req.ip))) {
+    return res.status(429).json({ errores: ["Demasiados pedidos seguidos. Intenta más tarde."] });
+  }
 
   // Precio y nombre salen de la base de datos, nunca del cliente,
   // para que nadie pueda mandar un precio inventado.
@@ -73,10 +100,10 @@ rutasPedidos.post("/", async (req, res) => {
   try {
     await cliente.query("BEGIN");
     const { rows: [pedido] } = await cliente.query(
-      `INSERT INTO pedidos (codigo, nombre, apellido, celular, nota, metodo_pago, total)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, codigo, estado, creado_en`,
-      [nuevoCodigo(), p.nombre.trim(), p.apellido.trim(), p.celular.replace(/\s/g, ""),
-       p.nota?.trim() || null, p.metodo_pago, total]
+      `INSERT INTO pedidos (codigo, nombre, apellido, celular, nota, metodo_pago, total, clave_envio)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, codigo, estado, creado_en`,
+      [nuevoCodigo(), p.nombre.trim(), p.apellido.trim(), normalizarCelular(p.celular),
+       p.nota?.trim() || null, p.metodo_pago, total, p.clave_envio || null]
     );
     for (const i of p.items) {
       const c = porId[i.canasta_id];
@@ -90,11 +117,24 @@ rutasPedidos.post("/", async (req, res) => {
     res.status(201).json({ codigo: pedido.codigo, estado: pedido.estado, total, creado_en: pedido.creado_en });
   } catch (e) {
     await cliente.query("ROLLBACK");
+    // Dos envíos con la misma clave al mismo tiempo: el segundo choca con el
+    // UNIQUE de la base de datos. Se responde con el pedido que ya se guardó.
+    if (e.code === "23505" && e.constraint?.includes("clave_envio")) {
+      return res.json(await buscarPorClave(p.clave_envio));
+    }
     throw e;
   } finally {
     cliente.release();
   }
 });
+
+async function buscarPorClave(clave) {
+  const { rows } = await db.query(
+    "SELECT codigo, estado, total::float AS total, creado_en FROM pedidos WHERE clave_envio = $1",
+    [clave]
+  );
+  return rows[0];
+}
 
 // GET /pedidos/MIA-7KQ2PX: el cliente ve el estado de su pedido.
 // No devuelve celular ni apellido: cualquiera con el código podría verlo.

@@ -30,7 +30,7 @@ Render: si nadie lo usó en un rato, la primera visita tarda unos 50 segundos en
 |---|---|---|---|
 | GET | `/canastas` | Lista de canastas visibles con sus productos | No |
 | GET | `/canastas/:id` | Una canasta | No |
-| POST | `/pedidos` | Crea un pedido y devuelve su código (ej. `MIA-7KQ2PX`) | No |
+| POST | `/pedidos` | Crea un pedido y devuelve su código (ej. `MIA-7KQ2PX`). Acepta `clave_envio` para no duplicar | No |
 | GET | `/pedidos/:codigo` | Estado del pedido, sin datos privados del cliente | No |
 | POST | `/admin/login` · `/admin/logout` | Iniciar y cerrar sesión | — |
 | GET | `/admin/pedidos?estado=` | Todos los pedidos, con filtro por estado | Sí |
@@ -54,6 +54,10 @@ POST /pedidos
 
 - **El precio lo pone el servidor, no el cliente.** El total se calcula con los precios de la base
   de datos; si alguien manda un precio en el pedido, se ignora.
+- **Pedidos sin duplicados:** el catálogo manda una `clave_envio` al azar; si el cliente toca
+  "Enviar" dos veces (o llegan dos envíos al mismo tiempo), el servidor devuelve el mismo pedido.
+- **CORS:** solo la página del catálogo puede mandar pedidos desde el navegador.
+- **Anti-spam:** como mucho 10 pedidos por hora desde una misma IP.
 - **Transacciones:** el pedido y sus canastas se guardan juntos o no se guarda nada.
 - **El pedido guarda una copia** del nombre y precio de cada canasta, así no cambia si después se
   edita el catálogo.
@@ -94,6 +98,8 @@ npm run dev                   # http://localhost:3000  ·  panel en /panel
 src/
   servidor.js        arranque y rutas principales
   db.js              conexión a PostgreSQL
+  cors.js            qué páginas pueden usar la API
+  ip.js · limite.js  IP del visitante y límites anti-spam
   auth.js            contraseñas, sesiones y cookies
   preparar.js        crea tablas y carga canastas (sin borrar nada)
   rutas/             canastas, pedidos y admin

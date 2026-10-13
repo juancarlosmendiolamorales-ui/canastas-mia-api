@@ -34,6 +34,10 @@ CREATE TABLE IF NOT EXISTS pedidos (
   creado_en   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Agregada después: un código del catálogo para no guardar dos veces el mismo
+-- pedido si el cliente toca "Enviar" dos veces.
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS clave_envio TEXT UNIQUE;
+
 -- Las canastas de cada pedido. Se copia el nombre y el precio del momento,
 -- así el pedido no cambia si después se edita la canasta.
 CREATE TABLE IF NOT EXISTS pedido_items (

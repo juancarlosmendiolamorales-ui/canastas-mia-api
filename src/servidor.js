@@ -5,6 +5,7 @@ import { rutasCanastas } from "./rutas/canastas.js";
 import { rutasPedidos } from "./rutas/pedidos.js";
 import { rutasAdmin } from "./rutas/admin.js";
 import { prepararBase } from "./preparar.js";
+import { cors } from "./cors.js";
 
 const app = express();
 const PUERTO = process.env.PORT || 3000;
@@ -25,8 +26,10 @@ app.get("/", (req, res) => {
   res.json({ mensaje: "API de Canastas MIA funcionando" });
 });
 
-app.use("/canastas", rutasCanastas);
-app.use("/pedidos", rutasPedidos);
+// El catálogo (otra página) solo usa estas dos rutas. El panel vive aquí
+// mismo, así que /admin no necesita CORS.
+app.use("/canastas", cors, rutasCanastas);
+app.use("/pedidos", cors, rutasPedidos);
 app.use("/admin", rutasAdmin);
 
 // El panel de administración es una página normal (HTML) en /panel.

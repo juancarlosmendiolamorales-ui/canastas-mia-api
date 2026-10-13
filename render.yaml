@@ -13,3 +13,5 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false # se pega a mano en Render: es secreta
+      - key: CORS_ORIGENES
+        value: https://canastas-mia.onrender.com # el catálogo
