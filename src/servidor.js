@@ -21,6 +21,12 @@ app.get("/", (req, res) => {
   res.json({ mensaje: "API de Canastas MIA funcionando" });
 });
 
+// TEMPORAL: diagnóstico de cabeceras del proxy. Se quita en el siguiente commit.
+app.get("/diag-ip", (req, res) => {
+  const h = req.headers;
+  res.json({ ip: req.ip, ips: req.ips, xff: h["x-forwarded-for"], cf: h["cf-connecting-ip"], tci: h["true-client-ip"], xri: h["x-real-ip"], socket: req.socket.remoteAddress });
+});
+
 app.use("/canastas", rutasCanastas);
 app.use("/pedidos", rutasPedidos);
 app.use("/admin", rutasAdmin);
