@@ -15,14 +15,14 @@ const permitirPedido = crearLimite({ max: 10, ventanaMs: 60 * 60 * 1000 });
 const permitirConsulta = crearLimite({ max: 30, ventanaMs: 15 * 60 * 1000 });
 
 // Deja solo los 9 dígitos: acepta "987 654 321", "+51 987-654-321", etc.
-function normalizarCelular(c) {
+export function normalizarCelular(c) {
   const digitos = String(c ?? "").replace(/\D/g, "");
   return digitos.length === 11 && digitos.startsWith("51") ? digitos.slice(2) : digitos;
 }
 
 // Revisa que el pedido venga completo y con datos que tengan sentido.
 // Devuelve la lista de errores (vacía si todo está bien).
-function validarPedido(p) {
+export function validarPedido(p) {
   const errores = [];
   if (!p || typeof p !== "object") return ["El pedido debe ser un objeto JSON"];
   for (const campo of ["nombre", "apellido"]) {
@@ -55,7 +55,7 @@ function validarPedido(p) {
 }
 
 // Código corto y fácil de dictar por teléfono (sin 0/O ni 1/I).
-function nuevoCodigo() {
+export function nuevoCodigo() {
   const letras = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let codigo = "MIA-";
   for (let i = 0; i < 6; i++) codigo += letras[randomInt(letras.length)];

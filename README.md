@@ -89,7 +89,8 @@ POST /pedidos
 
 ## Tecnologías
 
-Node.js · Express 5 · PostgreSQL · `pg` · Docker · HTML/CSS/JavaScript sin frameworks · Render · Neon
+Node.js · Express 5 · PostgreSQL · `pg` · Docker · HTML/CSS/JavaScript sin frameworks · Render · Neon ·
+pruebas con `node:test`
 
 ## Correrlo en tu computadora
 
@@ -104,17 +105,35 @@ npm run usuario -- mia "Mia"  # crea una cuenta para el panel y muestra su contr
 npm run dev                   # http://localhost:3000  ·  panel en /panel
 ```
 
+## Pruebas
+
+```bash
+npm test
+```
+
+30 pruebas con el *test runner* que ya trae Node (sin librerías extra). Las de la API corren contra
+una base aparte, `canastas_pruebas`, que se crea y se vacía sola; se niegan a correr si la base no es
+local. Revisan, entre otras cosas, que:
+
+- el precio salga de la base de datos aunque el navegador mande otro;
+- tocar "Enviar" varias veces, o dos veces al mismo tiempo, guarde un solo pedido;
+- un texto con SQL se guarde como texto y no se ejecute;
+- el login dé el mismo mensaje exista o no el usuario, frene a los 5 intentos y use cookies `HttpOnly`;
+- el Libro de Reclamaciones nunca devuelva datos personales.
+
 ## Estructura
 
 ```
 src/
-  servidor.js        arranque y rutas principales
+  app.js             rutas, cabeceras de seguridad y manejo de errores
+  servidor.js        arranque: prepara la base y abre el puerto
   db.js              conexión a PostgreSQL
   cors.js            qué páginas pueden usar la API
   ip.js · limite.js  IP del visitante y límites anti-spam
   auth.js            contraseñas, sesiones y cookies
   preparar.js        crea tablas y carga canastas (sin borrar nada)
-  rutas/             canastas, pedidos y admin
+  rutas/             canastas, pedidos, reclamos y admin
+test/                pruebas automáticas (npm test)
 public/panel/        panel web
 sql/esquema.sql      tablas
 scripts/             reiniciar la base y crear usuarios

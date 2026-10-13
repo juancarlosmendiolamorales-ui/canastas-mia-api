@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node --env-file=.env --watch src/servidor.js",
     "start": "node src/servidor.js",
+    "test": "node --env-file-if-exists=.env --test --test-concurrency=1 \"test/**/*.test.js\"",
     "db:encender": "docker compose --env-file .env up -d",
     "db:apagar": "docker compose --env-file .env stop",
     "usuario": "node --env-file=.env scripts/crear-usuario.js",

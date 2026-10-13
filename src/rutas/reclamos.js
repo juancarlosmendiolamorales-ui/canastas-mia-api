@@ -18,7 +18,7 @@ const OPCIONALES = ["apoderado", "codigo_pedido"];
 
 export const numeroHoja = (id) => "R-" + String(id).padStart(6, "0");
 
-function validarReclamo(r) {
+export function validarReclamo(r) {
   if (!r || typeof r !== "object") return ["Los datos deben ser un objeto JSON"];
   const errores = [];
   for (const [campo, max] of Object.entries(TEXTOS)) {
