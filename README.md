@@ -4,6 +4,10 @@ Backend para el [catálogo navideño de Canastas MIA](https://github.com/juancar
 un negocio real de canastas en Lima. Guarda los pedidos de los clientes en una base de datos y
 da a la dueña un panel con login para seguirlos: nuevo → pagado → en preparación → entregado.
 
+**En vivo:** [lista de canastas (API)](https://canastas-mia-api.onrender.com/canastas) ·
+[panel](https://canastas-mia-api.onrender.com/panel/) (requiere cuenta). Está en el plan gratis de
+Render: si nadie lo usó en un rato, la primera visita tarda unos 50 segundos en despertar.
+
 ![Panel de pedidos](docs/panel.png)
 
 ## Cómo funciona
