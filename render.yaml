@@ -4,7 +4,7 @@ services:
     name: canastas-mia-api
     runtime: node
     plan: free
-    region: oregon
+    region: virginia # cerca de la base de datos de Neon (US East)
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /
