@@ -1,5 +1,7 @@
 # Canastas MIA · API y panel de pedidos
 
+[![Pruebas](https://github.com/juancarlosmendiolamorales-ui/canastas-mia-api/actions/workflows/pruebas.yml/badge.svg)](https://github.com/juancarlosmendiolamorales-ui/canastas-mia-api/actions/workflows/pruebas.yml)
+
 Backend para el [catálogo navideño de Canastas MIA](https://github.com/juancarlosmendiolamorales-ui/catalogo-canastas-navidad),
 un negocio real de canastas en Lima. Guarda los pedidos de los clientes en una base de datos y
 da a la dueña un panel con login para seguirlos: nuevo → pagado → en preparación → entregado.
@@ -94,7 +96,7 @@ POST /pedidos
 ## Tecnologías
 
 Node.js · Express 5 · PostgreSQL · `pg` · Docker · HTML/CSS/JavaScript sin frameworks · Render · Neon ·
-pruebas con `node:test`
+pruebas con `node:test` · GitHub Actions
 
 ## Correrlo en tu computadora
 
@@ -125,6 +127,8 @@ local. Revisan, entre otras cosas, que:
 - el login dé el mismo mensaje exista o no el usuario, frene a los 5 intentos y use cookies `HttpOnly`;
 - el Libro de Reclamaciones nunca devuelva datos personales;
 - un precio nuevo en la Google Sheet llegue al total del pedido, y una hoja rota no borre nada.
+
+GitHub Actions las corre en cada `push` con un PostgreSQL de verdad.
 
 ## Estructura
 
